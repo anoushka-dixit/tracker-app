@@ -26,8 +26,8 @@ app.get("/teams", (req, res) => {
 });
 
 // UPDATE specific station (POST — from Admin "Update" button)
-app.post("/update", (req, res) => {
-  const { team, station } = req.body;
+app.get("/update", (req, res) => {
+  const { team, station } = req.query;
 
   const data = readData();
   const updated = data.map((t) =>
