@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = "https://your-backend-url.onrender.com";
+const API = "https://tracker-backend-tb4z.onrender.com";
 
 // Moved to top — was declared after use, which caused a crash
 const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);

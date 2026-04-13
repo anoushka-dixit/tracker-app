@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 
-const API = "https://your-backend-url.onrender.com";
+const API = "https://tracker-backend-tb4z.onrender.com";
 
 const teams = Array.from({ length: 15 }, (_, i) => `T${i + 1}`);
 const stations = ["A", "B", "C", "D", "E", "F", "TREASURE"];
