@@ -12,11 +12,15 @@ export default function Admin() {
 
   // Manually set a team to a specific station
   const update = async () => {
-    await axios.post(`${API}/update`, { team, station }, {
-      headers: { "Content-Type": "application/json" }
-    });
+  try {
+    alert("Updating...");
+    await axios.get(`${API}/update?team=${team}&station=${station}`);
     alert("Updated!");
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Error updating");
+  }
+};
 
   // Advance a team to their next station
   const next = async () => {
