@@ -27,7 +27,7 @@ const update = async () => {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Admin Panel v2</h1>
+      <h1>Admin Panel v3</h1>
 
       <select onChange={(e) => setTeam(e.target.value)}>
         {teams.map((t) => (
