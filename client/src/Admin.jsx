@@ -11,15 +11,12 @@ export default function Admin() {
   const [station, setStation] = useState("A");
 
   // Manually set a team to a specific station
-  const update = async () => {
-  try {
-    alert("Updating...");
-    await axios.get(`${API}/update?team=${team}&station=${station}`);
-    alert("Updated!");
-  } catch (err) {
-    console.error(err);
-    alert("Error updating");
-  }
+const update = async () => {
+  const url = `${API}/update?team=${team}&station=${station}`;
+  console.log("CALLING:", url);
+
+  await axios.get(url);
+  alert("Updated!");
 };
 
   // Advance a team to their next station
