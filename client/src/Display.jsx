@@ -6,13 +6,13 @@ const API = "https://tracker-backend-tb4z.onrender.com";
 const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
 const stationPositions = {
-  A: { top: "22%", left: "20%" },
-  B: { top: "18%", left: "48%" },
-  C: { top: "28%", left: "78%" },
-  D: { top: "55%", left: "60%" },
-  E: { top: "65%", left: "82%" },
-  F: { top: "72%", left: "30%" },
-  TREASURE: { top: "85%", left: "88%" }
+  A: { top: "35%", left: "17.75%" },
+  B: { top: "33.25%", left: "43%" },
+  C: { top: "38.25%", left: "75%" },
+  D: { top: "52.5%", left: "30.25%" },
+  E: { top: "57%", left: "62.25%" },
+  F: { top: "71.2%", left: "23%" },
+  TREASURE: { top: "75%", left: "65%" }
 };
 
 export default function Display() {
