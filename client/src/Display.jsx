@@ -89,7 +89,25 @@ export default function Display() {
           left: 0
         }}
       />
-
+        {Object.entries(stationPositions).map(([key, pos]) => (
+      <div
+        key={key}
+        style={{
+          position: "absolute",
+          top: pos.top,
+          left: pos.left,
+          transform: "translate(-50%, -50%)",
+          background: "red",
+          color: "white",
+          padding: "4px 6px",
+          borderRadius: "6px",
+          fontSize: "12px",
+          zIndex: 999
+        }}
+      >
+        {key}
+      </div>
+))}
       {/* Teams */}
       {teams.map((team, i) => {
         const pos = stationPositions[team.station];
