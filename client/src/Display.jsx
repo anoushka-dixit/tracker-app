@@ -3,9 +3,12 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
+// 🔥 TOGGLE THIS (true = show markers, false = hide)
+const SHOW_DEBUG_MARKERS = true;
+
 // % positions (stable)
 const STATION_POSITIONS = {
-  A: { x: (270 / 1536) * 100, y: (300 / 864) * 100 },
+  A: { x: (270 / 1536) * 100, y: (250 / 864) * 100 },
   B: { x: (700 / 1536) * 100, y: (260 / 864) * 100 },
   C: { x: (1150 / 1536) * 100, y: (330 / 864) * 100 },
   D: { x: (600 / 1536) * 100, y: (500 / 864) * 100 },
@@ -45,7 +48,7 @@ export default function Display() {
       try {
         const res = await axios.get(`${API}/teams`);
 
-        setPrevStations((prev) => {
+        setPrevStations(() => {
           const copy = {};
           res.data.forEach((t) => {
             copy[t.team] = t.station;
@@ -80,7 +83,6 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
-      {/* Fullscreen */}
       <button onClick={goFullscreen} style={styles.fullscreenBtn}>
         ⛶
       </button>
@@ -115,6 +117,34 @@ export default function Display() {
         >
           <img src="/map.png" alt="map" style={styles.mapImg} />
 
+          {/* 🔥 DEBUG STATION MARKERS */}
+          {SHOW_DEBUG_MARKERS &&
+            Object.entries(STATION_POSITIONS).map(([key, pos]) => (
+              <div
+                key={key}
+                style={{
+                  position: "absolute",
+                  left: `${pos.x}%`,
+                  top: `${pos.y}%`,
+                  transform: "translate(-50%, -50%)",
+                  background: "red",
+                  color: "white",
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                  zIndex: 999,
+                  border: "2px solid white"
+                }}
+              >
+                {key}
+              </div>
+            ))}
+
+          {/* Teams */}
           {teams.map((team) => {
             const pos = STATION_POSITIONS[team.station];
             if (!pos) return null;
@@ -154,7 +184,6 @@ export default function Display() {
         </div>
       </div>
 
-      {/* Animation */}
       <style>
         {`
         @keyframes pulse {
