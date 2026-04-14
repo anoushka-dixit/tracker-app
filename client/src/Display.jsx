@@ -19,21 +19,75 @@ const MAP_ASPECT_RATIO = 1536 / 864;
 const ROW_SIZE = 4;
 const MARKER_GAP = 4;
 
-function getGroupOffset(index, total, size) {
-  const cols = Math.min(total, ROW_SIZE);
-  const rows = Math.ceil(total / ROW_SIZE);
-  const step = size + MARKER_GAP;
+function getStationOffset(station, index, total, size) {
+  const gap = size + 6;
 
-  const col = index % ROW_SIZE;
-  const row = Math.floor(index / ROW_SIZE);
+  // 🔵 B: horizontal line (fits long island)
+  if (station === "B") {
+    const start = -(total - 1) * gap / 2;
+    return {
+      dx: start + index * gap,
+      dy: 0
+    };
+  }
 
-  const gridWidth = cols * step - MARKER_GAP;
-  const gridHeight = rows * step - MARKER_GAP;
+  // 🟡 C: slight arc
+  if (station === "C") {
+    const angleStep = Math.PI / 6;
+    const start = -((total - 1) / 2) * angleStep;
 
-  const dx = col * step - gridWidth / 2 + size / 2;
-  const dy = row * step - gridHeight / 2 + size / 2;
+    const angle = start + index * angleStep;
+    const radius = 25;
 
-  return { dx, dy };
+    return {
+      dx: radius * Math.cos(angle),
+      dy: radius * Math.sin(angle)
+    };
+  }
+
+  // 🟢 D: vertical stack
+  if (station === "D") {
+    const start = -(total - 1) * gap / 2;
+    return {
+      dx: 0,
+      dy: start + index * gap
+    };
+  }
+
+  // 🔴 E: circle spread
+  if (station === "E") {
+    const angle = (index / total) * 2 * Math.PI;
+    const radius = 25;
+
+    return {
+      dx: radius * Math.cos(angle),
+      dy: radius * Math.sin(angle)
+    };
+  }
+
+  // 🟣 F: diagonal spread
+  if (station === "F") {
+    const start = -(total - 1) * gap / 2;
+    return {
+      dx: start + index * gap,
+      dy: start + index * gap
+    };
+  }
+
+  // 🏁 TREASURE: tight cluster
+  if (station === "TREASURE") {
+    return {
+      dx: (index % 3) * gap - gap,
+      dy: Math.floor(index / 3) * gap - gap
+    };
+  }
+
+  // 🔵 A (default): small horizontal
+  const start = -(total - 1) * gap / 2;
+  return {
+    dx: start + index * gap,
+    dy: 0
+  };
 }
 
 export default function Display() {
@@ -125,7 +179,7 @@ export default function Display() {
 
             const size = window.innerWidth < 600 ? 20 : 30;
 
-            const { dx, dy } = getGroupOffset(index, total, size);
+            const { dx, dy } = getStationOffset(team.station, index, total, size);
 
             const moved =
               prevStations[team.team] &&
