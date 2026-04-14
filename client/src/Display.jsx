@@ -5,7 +5,7 @@ const API = "https://tracker-backend-tb4z.onrender.com";
 
 const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
-// 🔥 Use percentages instead of pixels (responsive)
+// 🔥 Adjust these for perfect alignment later
 const stationPositions = {
   A: { top: "22%", left: "20%" },
   B: { top: "18%", left: "48%" },
@@ -47,10 +47,12 @@ export default function Display() {
       style={{
         position: "relative",
         width: "100vw",
-        minHeight: "100vh",
-        overflow: "auto"
+        height: "100vh",
+        backgroundColor: "black",
+        overflow: "hidden"
       }}
     >
+      {/* Fullscreen button (desktop only) */}
       {!isMobile && (
         <button
           onClick={goFullscreen}
@@ -65,37 +67,19 @@ export default function Display() {
         </button>
       )}
 
-      {/* Map */}
+      {/* 🔥 FULLSCREEN MAP (no white bars) */}
       <img
         src="/map.png"
         alt="map"
         style={{
+          position: "absolute",
           width: "100%",
           height: "100%",
-          objectFit: "contain"
+          objectFit: "cover",
+          top: 0,
+          left: 0
         }}
       />
-
-      {/* 🔥 Optional: DEBUG markers (remove later) */}
-      {/* {Object.entries(stationPositions).map(([key, pos]) => (
-        <div
-          key={key}
-          style={{
-            position: "absolute",
-            top: pos.top,
-            left: pos.left,
-            transform: "translate(-50%, -50%)",
-            background: "red",
-            color: "white",
-            padding: "4px 6px",
-            borderRadius: "6px",
-            fontSize: "12px",
-            zIndex: 999
-          }}
-        >
-          {key}
-        </div>
-      ))} */}
 
       {/* Teams */}
       {teams.map((team, i) => {
@@ -120,7 +104,7 @@ export default function Display() {
               justifyContent: "center",
               fontSize: "12px",
               fontWeight: "bold",
-              // small spread if multiple teams at same station
+              zIndex: 10,
               marginLeft: `${(i % 4) * 10}px`
             }}
           >
