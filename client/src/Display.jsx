@@ -5,7 +5,6 @@ const API = "https://tracker-backend-tb4z.onrender.com";
 
 const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
-// 🔥 Adjust these for perfect alignment later
 const stationPositions = {
   A: { top: "22%", left: "20%" },
   B: { top: "18%", left: "48%" },
@@ -18,6 +17,7 @@ const stationPositions = {
 
 export default function Display() {
   const [teams, setTeams] = useState([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -34,12 +34,22 @@ export default function Display() {
     return () => clearInterval(interval);
   }, []);
 
+  // 🔥 detect fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   const goFullscreen = () => {
     const elem = document.documentElement;
     if (elem.requestFullscreen) elem.requestFullscreen();
     else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
     else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-    else alert("Fullscreen not supported");
   };
 
   return (
@@ -52,7 +62,6 @@ export default function Display() {
         overflow: "hidden"
       }}
     >
-      {/* Fullscreen button (desktop only) */}
       {!isMobile && (
         <button
           onClick={goFullscreen}
@@ -67,7 +76,7 @@ export default function Display() {
         </button>
       )}
 
-      {/* 🔥 FULLSCREEN MAP (no white bars) */}
+      {/* 🔥 Dynamic image behavior */}
       <img
         src="/map.png"
         alt="map"
@@ -75,7 +84,7 @@ export default function Display() {
           position: "absolute",
           width: "100%",
           height: "100%",
-          objectFit: "cover",
+          objectFit: isFullscreen ? "cover" : "contain",
           top: 0,
           left: 0
         }}
