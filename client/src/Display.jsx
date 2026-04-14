@@ -3,18 +3,15 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
-// 🔥 TOGGLE THIS (true = show markers, false = hide)
-const SHOW_DEBUG_MARKERS = true;
-
-// % positions (stable)
+// ✅ FINAL POSITIONS (from your DevTools alignment)
 const STATION_POSITIONS = {
-  A: { x: (270 / 1536) * 100, y: (250 / 864) * 100 },
-  B: { x: (700 / 1536) * 100, y: (260 / 864) * 100 },
-  C: { x: (1150 / 1536) * 100, y: (330 / 864) * 100 },
-  D: { x: (600 / 1536) * 100, y: (500 / 864) * 100 },
-  E: { x: (950 / 1536) * 100, y: (560 / 864) * 100 },
-  F: { x: (420 / 1536) * 100, y: (700 / 864) * 100 },
-  TREASURE: { x: (1100 / 1536) * 100, y: (720 / 864) * 100 }
+  A: { x: 17.5781, y: 25.9352 },
+  B: { x: 43, y: 23.5 },
+  C: { x: 74.8698, y: 32.1944 },
+  D: { x: 39.0625, y: 57.8704 },
+  E: { x: 61.849, y: 61 },
+  F: { x: 27.3438, y: 81.0185 },
+  TREASURE: { x: 71.6146, y: 83.3333 }
 };
 
 const MAP_ASPECT_RATIO = 1536 / 864;
@@ -117,34 +114,6 @@ export default function Display() {
         >
           <img src="/map.png" alt="map" style={styles.mapImg} />
 
-          {/* 🔥 DEBUG STATION MARKERS */}
-          {SHOW_DEBUG_MARKERS &&
-            Object.entries(STATION_POSITIONS).map(([key, pos]) => (
-              <div
-                key={key}
-                style={{
-                  position: "absolute",
-                  left: `${pos.x}%`,
-                  top: `${pos.y}%`,
-                  transform: "translate(-50%, -50%)",
-                  background: "red",
-                  color: "white",
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                  zIndex: 999,
-                  border: "2px solid white"
-                }}
-              >
-                {key}
-              </div>
-            ))}
-
-          {/* Teams */}
           {teams.map((team) => {
             const pos = STATION_POSITIONS[team.station];
             if (!pos) return null;
