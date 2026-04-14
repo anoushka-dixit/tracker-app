@@ -3,7 +3,7 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
-// % positions based on image (stable)
+// % positions (stable)
 const STATION_POSITIONS = {
   A: { x: (270 / 1536) * 100, y: (300 / 864) * 100 },
   B: { x: (700 / 1536) * 100, y: (280 / 864) * 100 },
@@ -40,13 +40,11 @@ export default function Display() {
   const [teams, setTeams] = useState([]);
   const [prevStations, setPrevStations] = useState({});
 
-  // 🔥 Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`${API}/teams`);
 
-        // store previous positions BEFORE updating
         setPrevStations((prev) => {
           const copy = {};
           res.data.forEach((t) => {
@@ -73,7 +71,7 @@ export default function Display() {
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
-  // group teams by station
+  // group teams
   const stationGroups = {};
   teams.forEach((team) => {
     if (!stationGroups[team.station]) stationGroups[team.station] = [];
@@ -82,22 +80,32 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
-      {/* Fullscreen button */}
+      {/* Fullscreen */}
       <button onClick={goFullscreen} style={styles.fullscreenBtn}>
         ⛶
       </button>
 
       {/* Side panel */}
       <div style={styles.sidePanel}>
-        <strong>Teams</strong>
-        {teams.map((t) => (
-          <div key={t.team}>
-            {t.team} → {t.station}
-          </div>
-        ))}
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Team</th>
+              <th style={styles.th}>Station</th>
+            </tr>
+          </thead>
+          <tbody>
+            {teams.map((t) => (
+              <tr key={t.team}>
+                <td style={styles.td}>{t.team}</td>
+                <td style={styles.td}>{t.station}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Map wrapper */}
+      {/* Map */}
       <div style={styles.mapOuter}>
         <div
           style={{
@@ -107,7 +115,6 @@ export default function Display() {
         >
           <img src="/map.png" alt="map" style={styles.mapImg} />
 
-          {/* Teams */}
           {teams.map((team) => {
             const pos = STATION_POSITIONS[team.station];
             if (!pos) return null;
@@ -116,8 +123,7 @@ export default function Display() {
             const index = group.findIndex((t) => t.team === team.team);
             const total = group.length;
 
-            const size =
-              window.innerWidth < 600 ? 20 : 30; // responsive size
+            const size = window.innerWidth < 600 ? 20 : 30;
 
             const { dx, dy } = getGroupOffset(index, total, size);
 
@@ -136,8 +142,9 @@ export default function Display() {
                   left: `${pos.x}%`,
                   top: `${pos.y}%`,
                   transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`,
-                  transition: "all 0.4s ease",
-                  animation: moved ? "pulse 0.6s ease" : "none"
+                  transition:
+                    "all 0.9s cubic-bezier(0.22, 1, 0.36, 1)",
+                  animation: moved ? "pulse 0.9s ease" : "none"
                 }}
               >
                 {team.team}
@@ -147,12 +154,12 @@ export default function Display() {
         </div>
       </div>
 
-      {/* animation */}
+      {/* Animation */}
       <style>
         {`
         @keyframes pulse {
           0% { transform: scale(1) translate(-50%, -50%); }
-          50% { transform: scale(1.4) translate(-50%, -50%); }
+          40% { transform: scale(1.5) translate(-50%, -50%); }
           100% { transform: scale(1) translate(-50%, -50%); }
         }
         `}
@@ -161,7 +168,6 @@ export default function Display() {
   );
 }
 
-// styles
 const styles = {
   shell: {
     display: "flex",
@@ -188,10 +194,24 @@ const styles = {
     color: "white",
     padding: "10px",
     borderRadius: "8px",
-    fontSize: "12px",
     maxHeight: "80vh",
     overflowY: "auto",
     zIndex: 1000
+  },
+
+  table: {
+    borderCollapse: "collapse",
+    fontSize: "12px"
+  },
+
+  th: {
+    borderBottom: "1px solid rgba(255,255,255,0.3)",
+    padding: "4px 8px",
+    textAlign: "left"
+  },
+
+  td: {
+    padding: "4px 8px"
   },
 
   mapOuter: {
