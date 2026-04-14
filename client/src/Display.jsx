@@ -1,23 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
 const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
 
+// 🔥 PIXEL POSITIONS based on your image (reference resolution ~1536x864)
 const stationPositions = {
-  A: { top: "35%", left: "17.75%" },
-  B: { top: "33.25%", left: "43%" },
-  C: { top: "38.25%", left: "75%" },
-  D: { top: "52.5%", left: "30.25%" },
-  E: { top: "57%", left: "62.25%" },
-  F: { top: "71.2%", left: "23%" },
-  TREASURE: { top: "75%", left: "65%" }
+  A: { x: 270, y: 300 },
+  B: { x: 700, y: 280 },
+  C: { x: 1150, y: 330 },
+  D: { x: 600, y: 500 },
+  E: { x: 950, y: 560 },
+  F: { x: 420, y: 700 },
+  TREASURE: { x: 1100, y: 720 }
 };
 
 export default function Display() {
   const [teams, setTeams] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  const BASE_WIDTH = 1536;
+  const BASE_HEIGHT = 864;
 
   const fetchData = async () => {
     try {
@@ -34,15 +41,33 @@ export default function Display() {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔥 detect fullscreen changes
+  // detect fullscreen
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () =>
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  // 🔥 calculate scale dynamically
+  useEffect(() => {
+    const updateScale = () => {
+      if (!containerRef.current) return;
+
+      const { width, height } = containerRef.current.getBoundingClientRect();
+
+      const scaleX = width / BASE_WIDTH;
+      const scaleY = height / BASE_HEIGHT;
+
+      // contain behavior
+      setScale(Math.min(scaleX, scaleY));
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
   }, []);
 
   const goFullscreen = () => {
@@ -54,6 +79,7 @@ export default function Display() {
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: "relative",
         width: "100vw",
@@ -76,69 +102,61 @@ export default function Display() {
         </button>
       )}
 
-      {/* 🔥 Dynamic image behavior */}
-      <img
-        src="/map.png"
-        alt="map"
-        style={{
-          position: "absolute",
-          width: "100%",
-          height: "100%",
-          objectFit: isFullscreen ? "cover" : "contain",
-          top: 0,
-          left: 0
-        }}
-      />
-        {Object.entries(stationPositions).map(([key, pos]) => (
+      {/* 🔥 CENTERED + SCALED IMAGE */}
       <div
-        key={key}
         style={{
           position: "absolute",
-          top: pos.top,
-          left: pos.left,
-          transform: "translate(-50%, -50%)",
-          background: "red",
-          color: "white",
-          padding: "4px 6px",
-          borderRadius: "6px",
-          fontSize: "12px",
-          zIndex: 999
+          top: "50%",
+          left: "50%",
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "top left",
+          width: BASE_WIDTH,
+          height: BASE_HEIGHT
         }}
       >
-        {key}
-      </div>
-))}
-      {/* Teams */}
-      {teams.map((team, i) => {
-        const pos = stationPositions[team.station];
-        if (!pos) return null;
+        <img
+          src="/map.png"
+          alt="map"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain"
+          }}
+        />
 
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              top: pos.top,
-              left: pos.left,
-              transform: "translate(-50%, -50%)",
-              background: "#239dad",
-              color: "white",
-              width: "28px",
-              height: "28px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-              fontWeight: "bold",
-              zIndex: 10,
-              marginLeft: `${(i % 4) * 10}px`
-            }}
-          >
-            {team.team}
-          </div>
-        );
-      })}
+        {/* 🔥 TEAM MARKERS */}
+        {teams.map((team, i) => {
+          const pos = stationPositions[team.station];
+          if (!pos) return null;
+
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                top: pos.y,
+                left: pos.x,
+                transform: "translate(-50%, -50%)",
+                background: "#239dad",
+                color: "white",
+                width: "30px",
+                height: "30px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "11px",
+                fontWeight: "bold",
+                boxShadow: "0 0 8px rgba(0,0,0,0.5)",
+                marginLeft: `${(i % 4) * 12}px`,
+                zIndex: 10
+              }}
+            >
+              {team.team}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
