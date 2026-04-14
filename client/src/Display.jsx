@@ -3,9 +3,10 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
+// % positions (stable)
 const STATION_POSITIONS = {
-  A: { x: (270 / 1536) * 100, y: (260 / 864) * 100 },
-  B: { x: (700 / 1536) * 100, y: (240 / 864) * 100 },
+  A: { x: (270 / 1536) * 100, y: (300 / 864) * 100 },
+  B: { x: (700 / 1536) * 100, y: (260 / 864) * 100 },
   C: { x: (1150 / 1536) * 100, y: (330 / 864) * 100 },
   D: { x: (600 / 1536) * 100, y: (500 / 864) * 100 },
   E: { x: (950 / 1536) * 100, y: (560 / 864) * 100 },
@@ -15,37 +16,24 @@ const STATION_POSITIONS = {
 
 const MAP_ASPECT_RATIO = 1536 / 864;
 
-/**
- * Circular arrangement around the station anchor point.
- *
- * - 1 team: sits exactly on the anchor (no offset needed).
- * - 2–N teams: evenly distributed on a circle of radius `r`.
- *   Radius grows with team count so markers never overlap.
- *
- * The first marker starts at the top (−90°) so the cluster
- * fans out symmetrically and doesn't drift into the label below.
- */
-function getCircularOffset(index, total, markerSize) {
-  if (total === 1) return { dx: 0, dy: 0 };
+const ROW_SIZE = 4;
+const MARKER_GAP = 4;
 
-  // Minimum gap between marker edges
-  const MIN_GAP = 4;
+function getGroupOffset(index, total, size) {
+  const cols = Math.min(total, ROW_SIZE);
+  const rows = Math.ceil(total / ROW_SIZE);
+  const step = size + MARKER_GAP;
 
-  // Minimum radius so neighbouring markers don't touch:
-  // circumference ≥ total × (markerSize + gap)
-  // r = circumference / (2π)
-  const minRadius = (total * (markerSize + MIN_GAP)) / (2 * Math.PI);
+  const col = index % ROW_SIZE;
+  const row = Math.floor(index / ROW_SIZE);
 
-  // Also enforce a floor so even 2–3 teams aren't cramped
-  const r = Math.max(minRadius, markerSize * 1.2);
+  const gridWidth = cols * step - MARKER_GAP;
+  const gridHeight = rows * step - MARKER_GAP;
 
-  // Start from top (−90°), spread clockwise
-  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+  const dx = col * step - gridWidth / 2 + size / 2;
+  const dy = row * step - gridHeight / 2 + size / 2;
 
-  return {
-    dx: Math.cos(angle) * r,
-    dy: Math.sin(angle) * r
-  };
+  return { dx, dy };
 }
 
 export default function Display() {
@@ -57,7 +45,7 @@ export default function Display() {
       try {
         const res = await axios.get(`${API}/teams`);
 
-        setPrevStations(() => {
+        setPrevStations((prev) => {
           const copy = {};
           res.data.forEach((t) => {
             copy[t.team] = t.station;
@@ -83,7 +71,7 @@ export default function Display() {
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
-  // Group teams by station
+  // group teams
   const stationGroups = {};
   teams.forEach((team) => {
     if (!stationGroups[team.station]) stationGroups[team.station] = [];
@@ -92,6 +80,7 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
+      {/* Fullscreen */}
       <button onClick={goFullscreen} style={styles.fullscreenBtn}>
         ⛶
       </button>
@@ -135,7 +124,8 @@ export default function Display() {
             const total = group.length;
 
             const size = window.innerWidth < 600 ? 20 : 30;
-            const { dx, dy } = getCircularOffset(index, total, size);
+
+            const { dx, dy } = getGroupOffset(index, total, size);
 
             const moved =
               prevStations[team.team] &&
@@ -152,7 +142,8 @@ export default function Display() {
                   left: `${pos.x}%`,
                   top: `${pos.y}%`,
                   transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`,
-                  transition: "left 0.9s cubic-bezier(0.22, 1, 0.36, 1), top 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)",
+                  transition:
+                    "all 0.9s cubic-bezier(0.22, 1, 0.36, 1)",
                   animation: moved ? "pulse 0.9s ease" : "none"
                 }}
               >
@@ -163,13 +154,14 @@ export default function Display() {
         </div>
       </div>
 
+      {/* Animation */}
       <style>
         {`
-          @keyframes pulse {
-            0%   { box-shadow: 0 0 6px rgba(0,0,0,0.6); }
-            40%  { box-shadow: 0 0 0 8px rgba(35,157,173,0.4); }
-            100% { box-shadow: 0 0 6px rgba(0,0,0,0.6); }
-          }
+        @keyframes pulse {
+          0% { transform: scale(1) translate(-50%, -50%); }
+          40% { transform: scale(1.5) translate(-50%, -50%); }
+          100% { transform: scale(1) translate(-50%, -50%); }
+        }
         `}
       </style>
     </div>
