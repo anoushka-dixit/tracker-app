@@ -18,7 +18,7 @@ const stationPositions = {
 
 export default function Display() {
   const [teams, setTeams] = useState([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -35,21 +35,7 @@ export default function Display() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 2000);
-    return () => clearInterval(interval);
-  }, []);
 
-  // detect fullscreen
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
 
   // 🔥 calculate scale dynamically
   useEffect(() => {
