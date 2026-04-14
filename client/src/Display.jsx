@@ -3,7 +3,6 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
-// % positions (stable)
 const STATION_POSITIONS = {
   A: { x: (270 / 1536) * 100, y: (300 / 864) * 100 },
   B: { x: (700 / 1536) * 100, y: (260 / 864) * 100 },
@@ -16,77 +15,36 @@ const STATION_POSITIONS = {
 
 const MAP_ASPECT_RATIO = 1536 / 864;
 
-const ROW_SIZE = 4;
-const MARKER_GAP = 4;
+/**
+ * Circular arrangement around the station anchor point.
+ *
+ * - 1 team: sits exactly on the anchor (no offset needed).
+ * - 2–N teams: evenly distributed on a circle of radius `r`.
+ *   Radius grows with team count so markers never overlap.
+ *
+ * The first marker starts at the top (−90°) so the cluster
+ * fans out symmetrically and doesn't drift into the label below.
+ */
+function getCircularOffset(index, total, markerSize) {
+  if (total === 1) return { dx: 0, dy: 0 };
 
-function getStationOffset(station, index, total, size) {
-  const gap = size + 6;
+  // Minimum gap between marker edges
+  const MIN_GAP = 4;
 
-  // 🔵 B: horizontal line (fits long island)
-  if (station === "B") {
-    const start = -(total - 1) * gap / 2;
-    return {
-      dx: start + index * gap,
-      dy: 0
-    };
-  }
+  // Minimum radius so neighbouring markers don't touch:
+  // circumference ≥ total × (markerSize + gap)
+  // r = circumference / (2π)
+  const minRadius = (total * (markerSize + MIN_GAP)) / (2 * Math.PI);
 
-  // 🟡 C: slight arc
-  if (station === "C") {
-    const angleStep = Math.PI / 6;
-    const start = -((total - 1) / 2) * angleStep;
+  // Also enforce a floor so even 2–3 teams aren't cramped
+  const r = Math.max(minRadius, markerSize * 1.2);
 
-    const angle = start + index * angleStep;
-    const radius = 25;
+  // Start from top (−90°), spread clockwise
+  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
 
-    return {
-      dx: radius * Math.cos(angle),
-      dy: radius * Math.sin(angle)
-    };
-  }
-
-  // 🟢 D: vertical stack
-  if (station === "D") {
-    const start = -(total - 1) * gap / 2;
-    return {
-      dx: 0,
-      dy: start + index * gap
-    };
-  }
-
-  // 🔴 E: circle spread
-  if (station === "E") {
-    const angle = (index / total) * 2 * Math.PI;
-    const radius = 25;
-
-    return {
-      dx: radius * Math.cos(angle),
-      dy: radius * Math.sin(angle)
-    };
-  }
-
-  // 🟣 F: diagonal spread
-  if (station === "F") {
-    const start = -(total - 1) * gap / 2;
-    return {
-      dx: start + index * gap,
-      dy: start + index * gap
-    };
-  }
-
-  // 🏁 TREASURE: tight cluster
-  if (station === "TREASURE") {
-    return {
-      dx: (index % 3) * gap - gap,
-      dy: Math.floor(index / 3) * gap - gap
-    };
-  }
-
-  // 🔵 A (default): small horizontal
-  const start = -(total - 1) * gap / 2;
   return {
-    dx: start + index * gap,
-    dy: 0
+    dx: Math.cos(angle) * r,
+    dy: Math.sin(angle) * r
   };
 }
 
@@ -99,7 +57,7 @@ export default function Display() {
       try {
         const res = await axios.get(`${API}/teams`);
 
-        setPrevStations((prev) => {
+        setPrevStations(() => {
           const copy = {};
           res.data.forEach((t) => {
             copy[t.team] = t.station;
@@ -125,7 +83,7 @@ export default function Display() {
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
-  // group teams
+  // Group teams by station
   const stationGroups = {};
   teams.forEach((team) => {
     if (!stationGroups[team.station]) stationGroups[team.station] = [];
@@ -134,7 +92,6 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
-      {/* Fullscreen */}
       <button onClick={goFullscreen} style={styles.fullscreenBtn}>
         ⛶
       </button>
@@ -178,8 +135,7 @@ export default function Display() {
             const total = group.length;
 
             const size = window.innerWidth < 600 ? 20 : 30;
-
-            const { dx, dy } = getStationOffset(team.station, index, total, size);
+            const { dx, dy } = getCircularOffset(index, total, size);
 
             const moved =
               prevStations[team.team] &&
@@ -196,8 +152,7 @@ export default function Display() {
                   left: `${pos.x}%`,
                   top: `${pos.y}%`,
                   transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`,
-                  transition:
-                    "all 0.9s cubic-bezier(0.22, 1, 0.36, 1)",
+                  transition: "left 0.9s cubic-bezier(0.22, 1, 0.36, 1), top 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)",
                   animation: moved ? "pulse 0.9s ease" : "none"
                 }}
               >
@@ -208,14 +163,13 @@ export default function Display() {
         </div>
       </div>
 
-      {/* Animation */}
       <style>
         {`
-        @keyframes pulse {
-          0% { transform: scale(1) translate(-50%, -50%); }
-          40% { transform: scale(1.5) translate(-50%, -50%); }
-          100% { transform: scale(1) translate(-50%, -50%); }
-        }
+          @keyframes pulse {
+            0%   { box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+            40%  { box-shadow: 0 0 0 8px rgba(35,157,173,0.4); }
+            100% { box-shadow: 0 0 6px rgba(0,0,0,0.6); }
+          }
         `}
       </style>
     </div>
