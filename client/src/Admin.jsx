@@ -77,7 +77,7 @@ export default function Admin() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>🗺️ Lupin Heist — Admin</h1>
+      <h1 style={styles.heading}> Lupin Heist — Admin</h1>
 
       {/* Feedback toast */}
       {feedback && (

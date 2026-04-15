@@ -5,13 +5,13 @@ const API = "https://tracker-backend-tb4z.onrender.com";
 
 // ─── Edit these after your DevTools session ───────────────────────────────────
 const STATION_POSITIONS = {
-  A:        { x: 17.5781, y: 25.9352 },
-  B:        { x: 43,      y: 23.5    },
-  C:        { x: 74.8698, y: 32.1944 },
-  D:        { x: 39.0625, y: 57.8704 },
-  E:        { x: 61.849,  y: 61      },
-  F:        { x: 27.3438, y: 81.0185 },
-  TREASURE: { x: 71.6146, y: 83.3333 }
+  A: { x: 17.5781, y: 25.9352 },
+  B: { x: 43, y: 15 },
+  C: { x: 74.8698, y: 18.5 },
+  D: { x: 39.0625, y: 42.5 },
+  E: { x: 61.849, y: 50 },
+  F: { x: 27.3438, y: 70 },
+  TREASURE: { x: 68.6146, y: 85 }
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -65,29 +65,14 @@ function getCircularOffset(index, total, markerSize) {
 // data-station="A" (etc.), and edit its `left` / `top` style directly.
 // The values are percentages of the map box. When happy, call __dumpPositions().
 // ─────────────────────────────────────────────────────────────────────────────
-function installDevHelper() {
-  window.__dumpPositions = () => {
-    const result = {};
-    document.querySelectorAll("[data-station]").forEach((el) => {
-      const station = el.dataset.station;
-      const x = parseFloat(el.style.left);
-      const y = parseFloat(el.style.top);
-      result[station] = { x: +x.toFixed(4), y: +y.toFixed(4) };
-    });
-    const formatted = JSON.stringify(result, null, 2)
-      .replace(/"x":/g, "x:")
-      .replace(/"y":/g, "y:");
-    console.log("── Copy this into STATION_POSITIONS ──\n" + formatted);
-    return result;
-  };
-}
+
 
 export default function Display() {
   const [teams, setTeams] = useState([]);
   const [movedTeams, setMovedTeams] = useState(new Set());
 
   // Install the console helper once on mount
-  useEffect(() => { installDevHelper(); }, []);
+  
 
   useEffect(() => {
     let prevStations = {};
@@ -180,42 +165,7 @@ export default function Display() {
           paddingTop: `${(1 / MAP_ASPECT_RATIO) * 100}%`
         }}>
           <img src="/map.png" alt="map" style={styles.mapImg} />
-
-          {/* ── Station anchor markers (always visible, one per station) ────────
-              These are the things you move in DevTools. Each is a large, labelled
-              crosshair sitting at the configured position. They are rendered on top
-              of team markers so you can always see them.
-              Once you're happy with positions, call window.__dumpPositions() in the
-              console and paste the output into STATION_POSITIONS above.
-          ──────────────────────────────────────────────────────────────────────── */}
-          {Object.entries(STATION_POSITIONS).map(([station, pos]) => (
-            <div
-              key={`anchor-${station}`}
-              data-station={station}
-              style={{
-                position:   "absolute",
-                left:       `${pos.x}%`,
-                top:        `${pos.y}%`,
-                transform:  "translate(-50%, -50%)",
-                width:      44,
-                height:     44,
-                borderRadius: "50%",
-                border:     "3px dashed #fff",
-                background: "rgba(255,255,255,0.15)",
-                display:    "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color:      "#fff",
-                fontSize:   11,
-                fontWeight: "bold",
-                zIndex:     50,
-                pointerEvents: "none",   // doesn't block clicks on team markers
-                boxShadow:  "0 0 0 2px rgba(0,0,0,0.6)",
-              }}
-            >
-              {station}
-            </div>
-          ))}
+   
 
           {/* ── Team markers ───────────────────────────────────────────────── */}
           {teams.map((team) => {
