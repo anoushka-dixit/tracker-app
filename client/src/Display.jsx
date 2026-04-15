@@ -5,13 +5,13 @@ const API = "https://tracker-backend-tb4z.onrender.com";
 
 // ─── Edit these after your DevTools session ───────────────────────────────────
 const STATION_POSITIONS = {
-  A: { x: 17.5781, y: 25.9352 },
-  B: { x: 43, y: 15 },
-  C: { x: 74.8698, y: 18.5 },
-  D: { x: 39.0625, y: 42.5 },
-  E: { x: 61.849, y: 50 },
-  F: { x: 27.3438, y: 70 },
-  TREASURE: { x: 68.6146, y: 85 }
+  A:        { x: 17.5781, y: 25.9352 },
+  B:        { x: 43,      y: 23.5    },
+  C:        { x: 74.8698, y: 32.1944 },
+  D:        { x: 39.0625, y: 57.8704 },
+  E:        { x: 61.849,  y: 61      },
+  F:        { x: 27.3438, y: 81.0185 },
+  TREASURE: { x: 71.6146, y: 83.3333 }
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -65,14 +65,29 @@ function getCircularOffset(index, total, markerSize) {
 // data-station="A" (etc.), and edit its `left` / `top` style directly.
 // The values are percentages of the map box. When happy, call __dumpPositions().
 // ─────────────────────────────────────────────────────────────────────────────
-
+function installDevHelper() {
+  window.__dumpPositions = () => {
+    const result = {};
+    document.querySelectorAll("[data-station]").forEach((el) => {
+      const station = el.dataset.station;
+      const x = parseFloat(el.style.left);
+      const y = parseFloat(el.style.top);
+      result[station] = { x: +x.toFixed(4), y: +y.toFixed(4) };
+    });
+    const formatted = JSON.stringify(result, null, 2)
+      .replace(/"x":/g, "x:")
+      .replace(/"y":/g, "y:");
+    console.log("── Copy this into STATION_POSITIONS ──\n" + formatted);
+    return result;
+  };
+}
 
 export default function Display() {
   const [teams, setTeams] = useState([]);
   const [movedTeams, setMovedTeams] = useState(new Set());
 
   // Install the console helper once on mount
-  
+  useEffect(() => { installDevHelper(); }, []);
 
   useEffect(() => {
     let prevStations = {};
@@ -165,7 +180,42 @@ export default function Display() {
           paddingTop: `${(1 / MAP_ASPECT_RATIO) * 100}%`
         }}>
           <img src="/map.png" alt="map" style={styles.mapImg} />
-   
+
+          {/* ── Station anchor markers (always visible, one per station) ────────
+              These are the things you move in DevTools. Each is a large, labelled
+              crosshair sitting at the configured position. They are rendered on top
+              of team markers so you can always see them.
+              Once you're happy with positions, call window.__dumpPositions() in the
+              console and paste the output into STATION_POSITIONS above.
+          ──────────────────────────────────────────────────────────────────────── */}
+          {Object.entries(STATION_POSITIONS).map(([station, pos]) => (
+            <div
+              key={`anchor-${station}`}
+              data-station={station}
+              style={{
+                position:   "absolute",
+                left:       `${pos.x}%`,
+                top:        `${pos.y}%`,
+                transform:  "translate(-50%, -50%)",
+                width:      44,
+                height:     44,
+                borderRadius: "50%",
+                border:     "3px dashed #fff",
+                background: "rgba(255,255,255,0.15)",
+                display:    "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color:      "#fff",
+                fontSize:   11,
+                fontWeight: "bold",
+                zIndex:     50,
+                pointerEvents: "none",   // doesn't block clicks on team markers
+                boxShadow:  "0 0 0 2px rgba(0,0,0,0.6)",
+              }}
+            >
+              {station}
+            </div>
+          ))}
 
           {/* ── Team markers ───────────────────────────────────────────────── */}
           {teams.map((team) => {
@@ -270,3 +320,59 @@ const styles = {
     userSelect:     "none",
   }
 };
+
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+const API = "https://tracker-backend-tb4z.onrender.com";
+
+// ─── Edit these after your DevTools session ───────────────────────────────────
+const STATION_POSITIONS = {
+  A: { x: 17.5781, y: 25.9352 },
+  B: { x: 43, y: 15 },
+  C: { x: 74.8698, y: 18.5 },
+  D: { x: 39.0625, y: 42.5 },
+  E: { x: 61.849, y: 50 },
+  F: { x: 27.3438, y: 70 },
+  TREASURE: { x: 68.6146, y: 85 }
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAP_ASPECT_RATIO = 1536 / 864;
+
+const TEAM_COLOURS = [
+  { bg: "#e74c3c", glow: "rgba(231,76,60,0.7)"   },
+  { bg: "#e67e22", glow: "rgba(230,126,34,0.7)"  },
+  { bg: "#f1c40f", glow: "rgba(241,196,15,0.7)"  },
+  { bg: "#2ecc71", glow: "rgba(46,204,113,0.7)"  },
+  { bg: "#1abc9c", glow: "rgba(26,188,156,0.7)"  },
+  { bg: "#3498db", glow: "rgba(52,152,219,0.7)"  },
+  { bg: "#9b59b6", glow: "rgba(155,89,182,0.7)"  },
+  { bg: "#e91e63", glow: "rgba(233,30,99,0.7)"   },
+  { bg: "#00bcd4", glow: "rgba(0,188,212,0.7)"   },
+  { bg: "#ff5722", glow: "rgba(255,87,34,0.7)"   },
+  { bg: "#8bc34a", glow: "rgba(139,195,74,0.7)"  },
+  { bg: "#607d8b", glow: "rgba(96,125,139,0.7)"  },
+  { bg: "#ff9800", glow: "rgba(255,152,0,0.7)"   },
+  { bg: "#795548", glow: "rgba(121,85,72,0.7)"   },
+  { bg: "#673ab7", glow: "rgba(103,58,183,0.7)"  },
+];
+
+function teamColour(teamName) {
+  const n = parseInt(teamName.replace(/\D/g, ""), 10);
+  return TEAM_COLOURS[(n - 1) % TEAM_COLOURS.length];
+}
+
+function getCircularOffset(index, total, markerSize) {
+  if (total === 1) return { dx: 0, dy: -(markerSize * 1.2) };
+  const MIN_GAP = 6;
+  const minRadius = (total * (markerSize + MIN_GAP)) / (2 * Math.PI);
+  const r = Math.max(minRadius, markerSize * 1.4);
+  const centreOffsetY = -r;
+  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+  return {
+    dx: Math.cos(angle) * r,
+    dy: centreOffsetY + Math.sin(angle) * r
+  };
+}
