@@ -3,6 +3,7 @@ import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
 
+// ─── Edit these after your DevTools session ───────────────────────────────────
 const STATION_POSITIONS = {
   A:        { x: 17.5781, y: 25.9352 },
   B:        { x: 43,      y: 23.5    },
@@ -12,68 +13,81 @@ const STATION_POSITIONS = {
   F:        { x: 27.3438, y: 81.0185 },
   TREASURE: { x: 71.6146, y: 83.3333 }
 };
+// ─────────────────────────────────────────────────────────────────────────────
 
 const MAP_ASPECT_RATIO = 1536 / 864;
 
-// 15 distinct colours — one per team, fixed by team number
 const TEAM_COLOURS = [
-  { bg: "#e74c3c", glow: "rgba(231,76,60,0.7)"   }, // T1  red
-  { bg: "#e67e22", glow: "rgba(230,126,34,0.7)"  }, // T2  orange
-  { bg: "#f1c40f", glow: "rgba(241,196,15,0.7)"  }, // T3  yellow
-  { bg: "#2ecc71", glow: "rgba(46,204,113,0.7)"  }, // T4  green
-  { bg: "#1abc9c", glow: "rgba(26,188,156,0.7)"  }, // T5  teal
-  { bg: "#3498db", glow: "rgba(52,152,219,0.7)"  }, // T6  blue
-  { bg: "#9b59b6", glow: "rgba(155,89,182,0.7)"  }, // T7  purple
-  { bg: "#e91e63", glow: "rgba(233,30,99,0.7)"   }, // T8  pink
-  { bg: "#00bcd4", glow: "rgba(0,188,212,0.7)"   }, // T9  cyan
-  { bg: "#ff5722", glow: "rgba(255,87,34,0.7)"   }, // T10 deep-orange
-  { bg: "#8bc34a", glow: "rgba(139,195,74,0.7)"  }, // T11 lime
-  { bg: "#607d8b", glow: "rgba(96,125,139,0.7)"  }, // T12 slate
-  { bg: "#ff9800", glow: "rgba(255,152,0,0.7)"   }, // T13 amber
-  { bg: "#795548", glow: "rgba(121,85,72,0.7)"   }, // T14 brown
-  { bg: "#673ab7", glow: "rgba(103,58,183,0.7)"  }, // T15 deep-purple
+  { bg: "#e74c3c", glow: "rgba(231,76,60,0.7)"   },
+  { bg: "#e67e22", glow: "rgba(230,126,34,0.7)"  },
+  { bg: "#f1c40f", glow: "rgba(241,196,15,0.7)"  },
+  { bg: "#2ecc71", glow: "rgba(46,204,113,0.7)"  },
+  { bg: "#1abc9c", glow: "rgba(26,188,156,0.7)"  },
+  { bg: "#3498db", glow: "rgba(52,152,219,0.7)"  },
+  { bg: "#9b59b6", glow: "rgba(155,89,182,0.7)"  },
+  { bg: "#e91e63", glow: "rgba(233,30,99,0.7)"   },
+  { bg: "#00bcd4", glow: "rgba(0,188,212,0.7)"   },
+  { bg: "#ff5722", glow: "rgba(255,87,34,0.7)"   },
+  { bg: "#8bc34a", glow: "rgba(139,195,74,0.7)"  },
+  { bg: "#607d8b", glow: "rgba(96,125,139,0.7)"  },
+  { bg: "#ff9800", glow: "rgba(255,152,0,0.7)"   },
+  { bg: "#795548", glow: "rgba(121,85,72,0.7)"   },
+  { bg: "#673ab7", glow: "rgba(103,58,183,0.7)"  },
 ];
 
-// Parse "T3" → index 2, then look up colour table
 function teamColour(teamName) {
   const n = parseInt(teamName.replace(/\D/g, ""), 10);
   return TEAM_COLOURS[(n - 1) % TEAM_COLOURS.length];
 }
 
-/**
- * Circular layout centred ABOVE the station anchor.
- *
- * Why above?  The station label text sits below the anchor point on the map
- * image. Shifting the entire cluster upward by `r` pixels keeps all markers
- * clear of the label regardless of how many teams are present.
- *
- * maths:
- *   r  = max(circumference-based minimum, 1.2 × markerSize)
- *   centreOffsetY = -r   ← shift whole cluster up by one radius
- *   then each marker is placed on the circle relative to that shifted centre
- */
 function getCircularOffset(index, total, markerSize) {
   if (total === 1) return { dx: 0, dy: -(markerSize * 1.2) };
-
   const MIN_GAP = 6;
   const minRadius = (total * (markerSize + MIN_GAP)) / (2 * Math.PI);
   const r = Math.max(minRadius, markerSize * 1.4);
-
-  // Cluster centre is shifted up so it clears the label below
   const centreOffsetY = -r;
-
-  // Start from top of the circle (−90°), spread clockwise
   const angle = (2 * Math.PI * index) / total - Math.PI / 2;
-
   return {
     dx: Math.cos(angle) * r,
     dy: centreOffsetY + Math.sin(angle) * r
   };
 }
 
+// ─── DevTools position helper ─────────────────────────────────────────────────
+// After the page loads, paste this into the browser console:
+//
+//   window.__dumpPositions()
+//
+// It will print the updated STATION_POSITIONS object so you can paste it
+// straight back into this file.
+//
+// To move an anchor, open DevTools → Elements, find the div with
+// data-station="A" (etc.), and edit its `left` / `top` style directly.
+// The values are percentages of the map box. When happy, call __dumpPositions().
+// ─────────────────────────────────────────────────────────────────────────────
+function installDevHelper() {
+  window.__dumpPositions = () => {
+    const result = {};
+    document.querySelectorAll("[data-station]").forEach((el) => {
+      const station = el.dataset.station;
+      const x = parseFloat(el.style.left);
+      const y = parseFloat(el.style.top);
+      result[station] = { x: +x.toFixed(4), y: +y.toFixed(4) };
+    });
+    const formatted = JSON.stringify(result, null, 2)
+      .replace(/"x":/g, "x:")
+      .replace(/"y":/g, "y:");
+    console.log("── Copy this into STATION_POSITIONS ──\n" + formatted);
+    return result;
+  };
+}
+
 export default function Display() {
   const [teams, setTeams] = useState([]);
   const [movedTeams, setMovedTeams] = useState(new Set());
+
+  // Install the console helper once on mount
+  useEffect(() => { installDevHelper(); }, []);
 
   useEffect(() => {
     let prevStations = {};
@@ -83,22 +97,18 @@ export default function Display() {
         const res = await axios.get(`${API}/teams`);
         const data = res.data;
 
-        // Detect which teams just moved
         const nowMoved = new Set();
         data.forEach((t) => {
           if (prevStations[t.team] && prevStations[t.team] !== t.station) {
             nowMoved.add(t.team);
           }
         });
-
         if (nowMoved.size > 0) {
           setMovedTeams(nowMoved);
           setTimeout(() => setMovedTeams(new Set()), 1000);
         }
 
-        // Update prev for next poll
         data.forEach((t) => { prevStations[t.team] = t.station; });
-
         setTeams(data);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -117,7 +127,6 @@ export default function Display() {
     else if (el.msRequestFullscreen)     el.msRequestFullscreen();
   };
 
-  // Group by station
   const stationGroups = {};
   teams.forEach((team) => {
     if (!stationGroups[team.station]) stationGroups[team.station] = [];
@@ -172,6 +181,43 @@ export default function Display() {
         }}>
           <img src="/map.png" alt="map" style={styles.mapImg} />
 
+          {/* ── Station anchor markers (always visible, one per station) ────────
+              These are the things you move in DevTools. Each is a large, labelled
+              crosshair sitting at the configured position. They are rendered on top
+              of team markers so you can always see them.
+              Once you're happy with positions, call window.__dumpPositions() in the
+              console and paste the output into STATION_POSITIONS above.
+          ──────────────────────────────────────────────────────────────────────── */}
+          {Object.entries(STATION_POSITIONS).map(([station, pos]) => (
+            <div
+              key={`anchor-${station}`}
+              data-station={station}
+              style={{
+                position:   "absolute",
+                left:       `${pos.x}%`,
+                top:        `${pos.y}%`,
+                transform:  "translate(-50%, -50%)",
+                width:      44,
+                height:     44,
+                borderRadius: "50%",
+                border:     "3px dashed #fff",
+                background: "rgba(255,255,255,0.15)",
+                display:    "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color:      "#fff",
+                fontSize:   11,
+                fontWeight: "bold",
+                zIndex:     50,
+                pointerEvents: "none",   // doesn't block clicks on team markers
+                boxShadow:  "0 0 0 2px rgba(0,0,0,0.6)",
+              }}
+            >
+              {station}
+            </div>
+          ))}
+
+          {/* ── Team markers ───────────────────────────────────────────────── */}
           {teams.map((team) => {
             const pos = STATION_POSITIONS[team.station];
             if (!pos) return null;
@@ -198,8 +244,15 @@ export default function Display() {
                   transform:  `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`,
                   background: colour.bg,
                   boxShadow:  `0 0 8px 3px ${colour.glow}, 0 0 2px rgba(0,0,0,0.5)`,
-                  animation:  moved ? "arrive 0.9s ease" : "pulse-glow 2.5s ease-in-out infinite",
-                  transition: "left 0.9s cubic-bezier(0.22,1,0.36,1), top 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1)",
+                  animation:  moved
+                    ? "arrive 0.9s ease"
+                    : "pulse-glow 2.5s ease-in-out infinite",
+                  transition: [
+                    "left 0.9s cubic-bezier(0.22,1,0.36,1)",
+                    "top 0.9s cubic-bezier(0.22,1,0.36,1)",
+                    "transform 0.9s cubic-bezier(0.22,1,0.36,1)"
+                  ].join(", "),
+                  zIndex: 20,
                 }}
               >
                 {team.team}
@@ -212,12 +265,12 @@ export default function Display() {
       <style>{`
         @keyframes pulse-glow {
           0%, 100% { filter: brightness(1);   }
-          50%       { filter: brightness(1.4); }
+          50%       { filter: brightness(1.5); }
         }
         @keyframes arrive {
-          0%   { transform: translate(calc(-50% + ${0}px), calc(-50% + ${0}px)) scale(1);   }
-          40%  { filter: brightness(2); transform: scale(1.6); }
-          100% { filter: brightness(1); transform: scale(1);   }
+          0%   { filter: brightness(1);   transform: scale(1);   }
+          40%  { filter: brightness(2.2); transform: scale(1.7); }
+          100% { filter: brightness(1);   transform: scale(1);   }
         }
       `}</style>
     </div>
@@ -263,7 +316,6 @@ const styles = {
     alignItems:     "center",
     justifyContent: "center",
     fontWeight:     "bold",
-    zIndex:         10,
     cursor:         "default",
     userSelect:     "none",
   }

@@ -181,12 +181,15 @@ export default function Admin() {
 
 const styles = {
   page: {
-    fontFamily: "sans-serif",
-    padding: "24px",
-    maxWidth: 760,
-    margin: "0 auto",
-    color: "#111"
-  },
+  fontFamily: "sans-serif",
+  padding: "24px",
+  maxWidth: 760,
+  margin: "0 auto",
+  color: "#111",
+  overflowY: "auto",
+  height: "100vh",
+  boxSizing: "border-box"
+},
   heading: {
     marginBottom: 20,
     fontSize: 22
