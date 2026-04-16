@@ -33,6 +33,8 @@ const TEAM_COLORS = [
   "#673ab7"
 ];
 
+const SHOW_ANCHORS = ["D", "F"];
+
 function getIslandOffset(index, total, radius = 55) {
   if (total === 1) return { dx: 0, dy: 0 };
 
@@ -54,7 +56,7 @@ export default function Display() {
       try {
         const res = await axios.get(`${API}/teams`);
 
-        setPrevStations((prev) => {
+        setPrevStations(() => {
           const next = {};
           teams.forEach((team) => {
             next[team.team] = team.station;
@@ -73,6 +75,27 @@ export default function Display() {
 
     return () => clearInterval(interval);
   }, [teams]);
+
+  useEffect(() => {
+    const audio = new Audio("/background.mp3");
+    audio.loop = true;
+    audio.volume = 0.4;
+
+    const playAudio = async () => {
+      try {
+        await audio.play();
+      } catch (err) {
+        console.log("Autoplay blocked until user interacts");
+      }
+    };
+
+    playAudio();
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
 
   const goFullscreen = () => {
     const el = document.documentElement;
@@ -133,6 +156,39 @@ export default function Display() {
           }}
         >
           <img src="/map.png" alt="map" style={styles.mapImg} />
+
+          {SHOW_ANCHORS.map((station) => {
+            const pos = STATION_POSITIONS[station];
+            if (!pos) return null;
+
+            return (
+              <div
+                key={`anchor-${station}`}
+                style={{
+                  position: "absolute",
+                  left: `${pos.x}%`,
+                  top: `${pos.y}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: window.innerWidth < 600 ? 18 : 24,
+                  height: window.innerWidth < 600 ? 18 : 24,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.15)",
+                  border: "2px dashed white",
+                  boxShadow: "0 0 10px rgba(255,255,255,0.6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: window.innerWidth < 600 ? 8 : 10,
+                  fontWeight: "bold",
+                  zIndex: 15,
+                  pointerEvents: "none"
+                }}
+              >
+                {station}
+              </div>
+            );
+          })}
 
           {teams.map((team, teamIndex) => {
             const pos = STATION_POSITIONS[team.station];
