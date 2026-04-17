@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 
 const API = "https://tracker-backend-tb4z.onrender.com";
@@ -34,20 +34,40 @@ function getIslandOffset(index, total, radius = 55) {
 export default function Display() {
   const [teams, setTeams] = useState([]);
   const [prevStations, setPrevStations] = useState({});
+  const [muted, setMuted] = useState(false);
+
+  // audioRef lets us control the same Audio object from anywhere in the component
+  const audioRef = useRef(null);
+
+  // Create the Audio object once on mount — do NOT call .play() here,
+  // because there has been no user gesture yet at mount time.
+  useEffect(() => {
+    const audio = new Audio("/background.mp3");
+    audio.loop   = true;
+    audio.volume = 0.4;
+    audioRef.current = audio;
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
+
+  // Keep the audio element in sync with the muted toggle
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted;
+  }, [muted]);
 
   // ── Data polling ──────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await axios.get(`${API}/teams`);
-
         setPrevStations(() => {
           const next = {};
-          // capture current teams before overwriting
           res.data.forEach((t) => { next[t.team] = t.station; });
           return next;
         });
-
         setTeams(res.data);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -57,37 +77,29 @@ export default function Display() {
     fetchData();
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, []); // ← empty deps: intentional, prevStations captured via closure in setter
-
-  // ── Background audio ──────────────────────────────────────────────────────
-  // File must be at:  client/public/background.mp3
-  // CRA serves /public at root, so the correct src is "/background.mp3"
-  useEffect(() => {
-    const audio = new Audio("/background.mp3");
-    audio.loop   = true;
-    audio.volume = 0.4;
-
-    // Browsers block autoplay until user gesture. We try immediately and
-    // also attach a one-shot listener so it starts on first click/keypress.
-    const tryPlay = () => audio.play().catch(() => {});
-    tryPlay();
-
-    const unlock = () => { tryPlay(); document.removeEventListener("click", unlock); };
-    document.addEventListener("click", unlock);
-
-    return () => {
-      audio.pause();
-      audio.currentTime = 0;
-      document.removeEventListener("click", unlock);
-    };
   }, []);
 
-  // ── Fullscreen ────────────────────────────────────────────────────────────
-  const goFullscreen = () => {
+  // ── Start audio + go fullscreen — both triggered by the same click ────────
+  // This is the only reliable way to satisfy the browser's autoplay policy:
+  // audio.play() must be called synchronously inside a user-gesture handler.
+  const handleStart = () => {
+    // Start audio (will succeed because we're inside a click handler)
+    if (audioRef.current) {
+      audioRef.current.play().catch((err) => {
+        console.warn("Audio play failed:", err);
+      });
+    }
+
+    // Go fullscreen
     const el = document.documentElement;
     if (el.requestFullscreen)            el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     else if (el.msRequestFullscreen)     el.msRequestFullscreen();
+  };
+
+  const toggleMute = (e) => {
+    e.stopPropagation(); // don't bubble to document
+    setMuted((prev) => !prev);
   };
 
   // ── Group teams by station ────────────────────────────────────────────────
@@ -101,7 +113,16 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
-      <button onClick={goFullscreen} style={styles.fullscreenBtn}>⛶</button>
+
+      {/* Top-right controls */}
+      <div style={styles.controls}>
+        <button onClick={toggleMute} style={styles.controlBtn}>
+          {muted ? "🔇" : "🔊"}
+        </button>
+        <button onClick={handleStart} style={styles.controlBtn}>
+          ⛶
+        </button>
+      </div>
 
       {/* Side panel */}
       <div style={styles.sidePanel}>
@@ -138,8 +159,6 @@ export default function Display() {
         }}>
           <img src="/map.png" alt="map" style={styles.mapImg} />
 
-          {/* No anchor markers — positioning is finalised */}
-
           {teams.map((team, teamIndex) => {
             const pos = STATION_POSITIONS[team.station];
             if (!pos) return null;
@@ -152,7 +171,6 @@ export default function Display() {
 
             const { dx, dy } = getIslandOffset(indexInGroup, group.length, radius);
 
-            // A team "moved" if we have a previous record and it differs
             const moved =
               prevStations[team.team] !== undefined &&
               prevStations[team.team] !== team.station;
@@ -168,15 +186,9 @@ export default function Display() {
                   fontSize:   size * 0.38,
                   left:       `${pos.x}%`,
                   top:        `${pos.y}%`,
-                  // translate centres the marker, then dx/dy applies group offset.
-                  // We deliberately do NOT touch scale here so the arrive animation
-                  // (which also avoids scale) cannot conflict with this transform.
                   transform:  `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`,
                   background: color,
-                  // colour-matched glow using hex + opacity suffix
                   boxShadow:  `${color}B3 0px 0px 8px 3px, rgba(0,0,0,0.5) 0px 0px 2px`,
-                  // arrive: bright flash via filter only — no scale, no transform change
-                  // pulse-glow: gentle idle brightness pulse
                   animation:  moved
                     ? "arrive 0.9s ease forwards"
                     : "pulse-glow 2.5s ease-in-out infinite",
@@ -196,14 +208,10 @@ export default function Display() {
       </div>
 
       <style>{`
-        /* Idle glow — brightness only, never touches transform */
         @keyframes pulse-glow {
           0%, 100% { filter: brightness(1);   }
           50%       { filter: brightness(1.5); }
         }
-
-        /* Arrival flash — filter + box-shadow only.
-           NO scale / transform so it cannot fight the inline translate. */
         @keyframes arrive {
           0%   { filter: brightness(1);   box-shadow: inherit; }
           35%  { filter: brightness(2.5); box-shadow: 0 0 24px 10px rgba(255,255,255,0.8); }
@@ -224,30 +232,34 @@ const styles = {
     backgroundColor: "#000",
     position:        "relative"
   },
-  fullscreenBtn: {
-    position:   "absolute",
-    top:        16,
-    right:      16,
-    zIndex:     1000,
-    background: "rgba(0,0,0,0.5)",
-    color:      "#fff",
-    border:     "1px solid rgba(255,255,255,0.2)",
+  controls: {
+    position: "absolute",
+    top:      16,
+    right:    16,
+    zIndex:   1000,
+    display:  "flex",
+    gap:      8
+  },
+  controlBtn: {
+    background:   "rgba(0,0,0,0.5)",
+    color:        "#fff",
+    border:       "1px solid rgba(255,255,255,0.2)",
     borderRadius: 6,
-    padding:    "5px 10px",
-    cursor:     "pointer",
-    fontSize:   14
+    padding:      "5px 10px",
+    cursor:       "pointer",
+    fontSize:     14
   },
   sidePanel: {
-    position:   "absolute",
-    left:       10,
-    top:        10,
-    background: "rgba(0,0,0,0.65)",
-    color:      "white",
-    padding:    "10px",
+    position:     "absolute",
+    left:         10,
+    top:          10,
+    background:   "rgba(0,0,0,0.65)",
+    color:        "white",
+    padding:      "10px",
     borderRadius: "8px",
-    maxHeight:  "80vh",
-    overflowY:  "auto",
-    zIndex:     1000
+    maxHeight:    "80vh",
+    overflowY:    "auto",
+    zIndex:       1000
   },
   table:    { borderCollapse: "collapse", fontSize: "12px" },
   th:       { borderBottom: "1px solid rgba(255,255,255,0.3)", padding: "4px 8px", textAlign: "left" },
