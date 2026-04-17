@@ -1,3 +1,4 @@
+```jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -7,9 +8,9 @@ const STATION_POSITIONS = {
   A: { x: 17.5781, y: 15.9352 },
   B: { x: 43, y: 23.5 },
   C: { x: 74.8698, y: 32.1944 },
-  D: { x: 39.0625, y: 57.8704 },
+  D: { x: 30, y: 53.8704 },
   E: { x: 61.849, y: 61 },
-  F: { x: 20.3438, y: 70 },
+  F: { x: 23, y: 83.5 },
   TREASURE: { x: 71.6146, y: 83.3333 }
 };
 
@@ -360,3 +361,4 @@ const styles = {
     userSelect: "none"
   }
 };
+```
