@@ -21,8 +21,10 @@ const TEAM_COLORS = [
   "#8bc34a", "#607d8b", "#ff9800", "#795548", "#673ab7"
 ];
 
+// FIX 1: When total === 1, return a small fixed offset instead of (0,0)
+// so the lone marker doesn't sit directly on the station anchor.
 function getIslandOffset(index, total, radius = 55) {
-  if (total === 1) return { dx: 0, dy: 0 };
+  if (total === 1) return { dx: 0, dy: -radius * 0.55 };  // nudge upward
   const angleStep = (2 * Math.PI) / total;
   const angle = -Math.PI / 2 + index * angleStep;
   return {
@@ -35,17 +37,26 @@ export default function Display() {
   const [teams, setTeams] = useState([]);
   const [prevStations, setPrevStations] = useState({});
   const [muted, setMuted] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
-  // audioRef lets us control the same Audio object from anywhere in the component
   const audioRef = useRef(null);
 
-  // Create the Audio object once on mount — do NOT call .play() here,
-  // because there has been no user gesture yet at mount time.
+  // Create the Audio object and attempt autoplay immediately on mount.
+  // FIX 2: Try .play() right away — browsers allow this if the user has
+  // previously interacted with the domain (e.g. visited before). If blocked,
+  // we show a small "tap to enable audio" hint and retry on first click.
   useEffect(() => {
     const audio = new Audio("/background.mp3");
     audio.loop   = true;
     audio.volume = 0.4;
     audioRef.current = audio;
+
+    audio.play().then(() => {
+      setAudioBlocked(false);
+    }).catch(() => {
+      // Autoplay was blocked — surface a hint to the user
+      setAudioBlocked(true);
+    });
 
     return () => {
       audio.pause();
@@ -53,10 +64,24 @@ export default function Display() {
     };
   }, []);
 
-  // Keep the audio element in sync with the muted toggle
+  // Sync muted state to the audio element
   useEffect(() => {
     if (audioRef.current) audioRef.current.muted = muted;
   }, [muted]);
+
+  // If autoplay was blocked, retry on the first click anywhere on the page
+  useEffect(() => {
+    if (!audioBlocked) return;
+
+    const resumeOnClick = () => {
+      audioRef.current?.play().then(() => {
+        setAudioBlocked(false);
+      }).catch(() => {});
+    };
+
+    document.addEventListener("click", resumeOnClick, { once: true });
+    return () => document.removeEventListener("click", resumeOnClick);
+  }, [audioBlocked]);
 
   // ── Data polling ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -79,18 +104,16 @@ export default function Display() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Start audio + go fullscreen — both triggered by the same click ────────
-  // This is the only reliable way to satisfy the browser's autoplay policy:
-  // audio.play() must be called synchronously inside a user-gesture handler.
+  // ── Start audio + go fullscreen ───────────────────────────────────────────
   const handleStart = () => {
-    // Start audio (will succeed because we're inside a click handler)
     if (audioRef.current) {
-      audioRef.current.play().catch((err) => {
+      audioRef.current.play().then(() => {
+        setAudioBlocked(false);
+      }).catch((err) => {
         console.warn("Audio play failed:", err);
       });
     }
 
-    // Go fullscreen
     const el = document.documentElement;
     if (el.requestFullscreen)            el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -98,7 +121,7 @@ export default function Display() {
   };
 
   const toggleMute = (e) => {
-    e.stopPropagation(); // don't bubble to document
+    e.stopPropagation();
     setMuted((prev) => !prev);
   };
 
@@ -113,6 +136,13 @@ export default function Display() {
 
   return (
     <div style={styles.shell}>
+
+      {/* Autoplay blocked hint */}
+      {audioBlocked && (
+        <div style={styles.audioHint}>
+          🔈 Tap anywhere to enable background music
+        </div>
+      )}
 
       {/* Top-right controls */}
       <div style={styles.controls}>
@@ -231,6 +261,20 @@ const styles = {
     height:          "100vh",
     backgroundColor: "#000",
     position:        "relative"
+  },
+  audioHint: {
+    position:     "absolute",
+    bottom:       20,
+    left:         "50%",
+    transform:    "translateX(-50%)",
+    background:   "rgba(0,0,0,0.7)",
+    color:        "#fff",
+    padding:      "8px 16px",
+    borderRadius: 20,
+    fontSize:     13,
+    zIndex:       1000,
+    pointerEvents: "none",
+    whiteSpace:   "nowrap"
   },
   controls: {
     position: "absolute",
